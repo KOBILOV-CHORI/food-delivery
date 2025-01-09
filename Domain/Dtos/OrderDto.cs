@@ -9,7 +9,7 @@ public record BaseOrderDto
     public string DeliveryAddress { get; set; }
     public PaymentMethod PaymentMethod { get; set; }
     public OrderStatus OrderStatus { get; set; }
-    public int? CourierId { get; set; }
+    public int CourierId { get; set; }
     public PaymentStatus PaymentStatus { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? DeliveredAt { get; set; }

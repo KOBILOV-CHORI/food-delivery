@@ -1,52 +1,68 @@
+using System.Net;
 using AutoMapper;
 using Domain.Dtos;
 using Domain.Entities;
 using Infrastructure.Data;
+using Infrastructure.Responses;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Services.UserServices;
 
 public class UserService(DataContext context, IMapper mapper) : IUserService
 {
-    public bool AddUser(AddUserDto addUserDto)
+    public ApiResponse<bool> AddUser(AddUserDto addUserDto)
     {
-        var user = mapper.Map<User>(addUserDto);
+        var User = mapper.Map<User>(addUserDto);
 
-        context.Users.Add(user);
+        context.Users.Add(User);
         var res = context.SaveChanges();
-        return res != 0;
+        return res == 0
+            ? new ApiResponse<bool>(HttpStatusCode.InternalServerError, "Internal server error") 
+            : new ApiResponse<bool>(true);
     }
 
-    public bool DeleteUser(int id)
+    public ApiResponse<bool> DeleteUser(int id)
     {
-        var user = context.Users.FirstOrDefault(e => e.Id == id);
-        if(user == null) return false;
-        context.Users.Remove(user);
+        var User = context.Users.FirstOrDefault(e => e.Id == id);
+        if(User == null) return new ApiResponse<bool>(HttpStatusCode.NotFound, "User Not Found");
+        context.Users.Remove(User);
         var res = context.SaveChanges();
-        return res != 0;
+        return res == 0
+            ? new ApiResponse<bool>(HttpStatusCode.InternalServerError, "Internal server error") 
+            : new ApiResponse<bool>(true);
     }
 
-    public List<GetUserDto> GetAllUsers()
+    public ApiResponse<List<GetUserDto>> GetAllUsers()
     {
-        var users = context.Users.ToList();
-        return mapper.Map<List<GetUserDto>>(users);
+        var Users = context.Users.ToList();
+        var getAllUsers = mapper.Map<List<GetUserDto>>(Users);
+        return new ApiResponse<List<GetUserDto>>(getAllUsers);
     }
 
-    public GetUserDto GetUserById(int id)
+    public ApiResponse<GetUserDto> GetUserById(int id)
     {
-        var user = context.Users.FirstOrDefault(e => e.Id == id);
-        return mapper.Map<GetUserDto>(user);
+        var User = context.Users.FirstOrDefault(e => e.Id == id);
+        var getUserDto =  mapper.Map<GetUserDto>(User);
+        return getUserDto == null
+            ? new ApiResponse<GetUserDto>(HttpStatusCode.NotFound, "User not found") 
+            : new ApiResponse<GetUserDto>(getUserDto);
     }
 
-    public bool UpdateUser(UpdateUserDto updateUserDto)
+    public ApiResponse<bool> UpdateUser(UpdateUserDto updateUserDto)
     {
-        var user = context.Users.FirstOrDefault(e => e.Id == updateUserDto.Id);
-        if(user == null) return false;
-        user.Address = updateUserDto.Address;
-        user.Email = updateUserDto.Email;
-        user.Name = updateUserDto.Name;
-        user.Phone = updateUserDto.Phone;
-        user.Role = updateUserDto.Role;
+        var User = context.Users.FirstOrDefault(e => e.Id == updateUserDto.Id);
+        if(User == null) return new ApiResponse<bool>(HttpStatusCode.NotFound, "User not found");
+        // User.CourierId = updateUserDto.CourierId;
+        // User.UserId = updateUserDto.UserId;
+        // User.RestaurantId = updateUserDto.RestaurantId;
+        // User.PaymentMethod = updateUserDto.PaymentMethod;
+        // User.PaymentStatus = updateUserDto.PaymentStatus;
+        // User.UserStatus = updateUserDto.UserStatus;
+        // User.DeliveryAddress = updateUserDto.DeliveryAddress;
+        // User.TotalAmount = updateUserDto.TotalAmount;
         var res = context.SaveChanges();
-        return res != 0; 
+        return res != 0
+            ? new ApiResponse<bool>(HttpStatusCode.InternalServerError, "Internal server error") 
+            : new ApiResponse<bool>(true);
     }
 }

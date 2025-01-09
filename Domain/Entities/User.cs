@@ -12,5 +12,6 @@ public class User
     public string Address { get; set; }
     public DateTime RegistrationDate { get; set; }
     public UserRole Role { get; set; }
+    public Courier Courier { get; set; }
     public List<Order> Orders { get; set; }
 }
