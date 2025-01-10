@@ -2,6 +2,7 @@ using System.Net;
 using AutoMapper;
 using Domain.Dtos;
 using Domain.Entities;
+using Domain.Filters;
 using Infrastructure.Data;
 using Infrastructure.Responses;
 using Microsoft.EntityFrameworkCore;
@@ -32,11 +33,28 @@ public class UserService(DataContext context, IMapper mapper) : IUserService
             : new ApiResponse<bool>(true);
     }
 
-    public ApiResponse<List<GetUserDto>> GetAllUsers()
+    public PaginationResponse<List<GetUserDto>> GetAllUsers(UserFilter filter)
     {
-        var Users = context.Users.ToList();
-        var getAllUsers = mapper.Map<List<GetUserDto>>(Users);
-        return new ApiResponse<List<GetUserDto>>(getAllUsers);
+        IQueryable<User> users = context.Users;
+
+        if (!string.IsNullOrEmpty(filter.Name))
+            users = users.Where(x => x.Name.ToLower().Contains(filter.Name.ToLower()));
+        if (!string.IsNullOrEmpty(filter.Email))
+            users = users.Where(x => x.Email.ToLower().Contains(filter.Email.ToLower()));
+        if (!string.IsNullOrEmpty(filter.Phone))
+            users = users.Where(x => x.Phone.ToLower().Contains(filter.Phone.ToLower()));
+        if (!string.IsNullOrEmpty(filter.Address))
+            users = users.Where(x => x.Address.ToLower().Contains(filter.Address.ToLower()));
+        if (filter.Role.HasValue)
+            users = users.Where(x => x.Role == filter.Role);
+
+        int totalRecords = users.Count();
+        var result = users.Skip((filter.PageNumber - 1) * filter.PageSize)
+                        .Take(filter.PageSize)
+                        .Select(x => mapper.Map<GetUserDto>(x))
+                        .ToList();
+
+        return PaginationResponse<List<GetUserDto>>.Create(filter.PageNumber, filter.PageSize, totalRecords, result);
     }
 
     public ApiResponse<GetUserDto> GetUserById(int id)

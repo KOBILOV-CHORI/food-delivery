@@ -2,6 +2,7 @@ using System.Net;
 using AutoMapper;
 using Domain.Dtos;
 using Domain.Entities;
+using Domain.Filters;
 using Infrastructure.Data;
 using Infrastructure.Responses;
 using Microsoft.EntityFrameworkCore;
@@ -32,19 +33,34 @@ public class CourierService(DataContext context, IMapper mapper) : ICourierServi
             : new ApiResponse<bool>(true);
     }
 
-    public ApiResponse<List<GetCourierDto>> GetAllCouriers()
+    public PaginationResponse<List<GetCourierDto>> GetAllCouriers(CourierFilter filter)
     {
-        var Couriers = context.Couriers.ToList();
-        var getAllCouriers = mapper.Map<List<GetCourierDto>>(Couriers);
-        return new ApiResponse<List<GetCourierDto>>(getAllCouriers);
+        IQueryable<Courier> couriers = context.Couriers;
+
+        if (filter.UserId.HasValue)
+            couriers = couriers.Where(x => x.UserId == filter.UserId);
+        if (filter.Status.HasValue)
+            couriers = couriers.Where(x => x.Status == filter.Status);
+        if (!string.IsNullOrEmpty(filter.CurrentLocation))
+            couriers = couriers.Where(x => x.CurrentLocation.ToLower().Contains(filter.CurrentLocation.ToLower()));
+        if (filter.Rating.HasValue)
+            couriers = couriers.Where(x => x.Rating == filter.Rating);
+
+        int totalRecords = couriers.Count();
+        var result = couriers.Skip((filter.PageNumber - 1) * filter.PageSize)
+                            .Take(filter.PageSize)
+                            .Select(x => mapper.Map<GetCourierDto>(x))
+                            .ToList();
+
+        return PaginationResponse<List<GetCourierDto>>.Create(filter.PageNumber, filter.PageSize, totalRecords, result);
     }
 
     public ApiResponse<GetCourierDto> GetCourierById(int id)
     {
-        var Courier = context.Couriers.FirstOrDefault(e => e.Id == id);
-        var getCourierDto =  mapper.Map<GetCourierDto>(Courier);
+        var courier = context.Couriers.FirstOrDefault(e => e.Id == id);
+        var getCourierDto = mapper.Map<GetCourierDto>(courier);
         return getCourierDto == null
-            ? new ApiResponse<GetCourierDto>(HttpStatusCode.NotFound, "Courier not found") 
+            ? new ApiResponse<GetCourierDto>(HttpStatusCode.NotFound, "Courier not found")
             : new ApiResponse<GetCourierDto>(getCourierDto);
     }
 

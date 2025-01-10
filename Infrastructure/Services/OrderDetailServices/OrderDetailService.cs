@@ -2,6 +2,7 @@ using System.Net;
 using AutoMapper;
 using Domain.Dtos;
 using Domain.Entities;
+using Domain.Filters;
 using Infrastructure.Data;
 using Infrastructure.Responses;
 using Microsoft.EntityFrameworkCore;
@@ -32,11 +33,28 @@ public class OrderDetailService(DataContext context, IMapper mapper) : IOrderDet
             : new ApiResponse<bool>(true);
     }
 
-    public ApiResponse<List<GetOrderDetailDto>> GetAllOrderDetails()
+    public PaginationResponse<List<GetOrderDetailDto>> GetAllOrderDetails(OrderDetailFilter filter)
     {
-        var OrderDetails = context.OrderDetails.ToList();
-        var getAllOrderDetails = mapper.Map<List<GetOrderDetailDto>>(OrderDetails);
-        return new ApiResponse<List<GetOrderDetailDto>>(getAllOrderDetails);
+        IQueryable<OrderDetail> orderDetails = context.OrderDetails;
+
+        if (filter.OrderId.HasValue)
+            orderDetails = orderDetails.Where(x => x.OrderId == filter.OrderId);
+        if (filter.MenuItemId.HasValue)
+            orderDetails = orderDetails.Where(x => x.MenuItemId == filter.MenuItemId);
+        if (filter.Quantity.HasValue)
+            orderDetails = orderDetails.Where(x => x.Quantity == filter.Quantity);
+        if (filter.Price.HasValue)
+            orderDetails = orderDetails.Where(x => x.Price == filter.Price);
+        if (!string.IsNullOrEmpty(filter.SpecialInstructions))
+            orderDetails = orderDetails.Where(x => x.SpecialInstructions.ToLower().Contains(filter.SpecialInstructions.ToLower()));
+
+        int totalRecords = orderDetails.Count();
+        var result = orderDetails.Skip((filter.PageNumber - 1) * filter.PageSize)
+                               .Take(filter.PageSize)
+                               .Select(x => mapper.Map<GetOrderDetailDto>(x))
+                               .ToList();
+
+        return PaginationResponse<List<GetOrderDetailDto>>.Create(filter.PageNumber, filter.PageSize, totalRecords, result);
     }
 
     public ApiResponse<GetOrderDetailDto> GetOrderDetailById(int id)

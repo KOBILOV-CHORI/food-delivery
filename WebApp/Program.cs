@@ -1,4 +1,5 @@
 using Infrastructure.Data;
+using Infrastructure.Extensions;
 using Infrastructure.Profiles;
 using Infrastructure.Services.CourierServices;
 using Infrastructure.Services.MenuServices;
@@ -12,14 +13,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
-builder.Services.AddDbContext<DataContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<ICourierService, CourierService>();
-builder.Services.AddScoped<IRestaurantService, RestaurantService>();
-builder.Services.AddScoped<IMenuService, MenuService>();
-builder.Services.AddScoped<IOrderDetailService, OrderDetailService>();
-builder.Services.AddScoped<IOrderService, OrderService>();
-builder.Services.AddAutoMapper(typeof(InfrastructureProfile));
+
+builder.Services.RegisterServices(builder.Configuration);
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

@@ -2,6 +2,7 @@ using System.Net;
 using AutoMapper;
 using Domain.Dtos;
 using Domain.Entities;
+using Domain.Filters;
 using Infrastructure.Data;
 using Infrastructure.Responses;
 using Microsoft.EntityFrameworkCore;
@@ -32,11 +33,36 @@ public class OrderService(DataContext context, IMapper mapper) : IOrderService
             : new ApiResponse<bool>(true);
     }
 
-    public ApiResponse<List<GetOrderDto>> GetAllOrders()
+    public PaginationResponse<List<GetOrderDto>> GetAllOrders(OrderFilter filter)
     {
-        var orders = context.Orders.ToList();
-        var getAllOrders = mapper.Map<List<GetOrderDto>>(orders);
-        return new ApiResponse<List<GetOrderDto>>(getAllOrders);
+        IQueryable<Order> orders = context.Orders;
+
+        if (filter.UserId.HasValue)
+            orders = orders.Where(x => x.UserId == filter.UserId);
+        if (filter.RestaurantId.HasValue)
+            orders = orders.Where(x => x.RestaurantId == filter.RestaurantId);
+        if (filter.CourierId.HasValue)
+            orders = orders.Where(x => x.CourierId == filter.CourierId);
+        if (filter.OrderStatus.HasValue)
+            orders = orders.Where(x => x.OrderStatus == filter.OrderStatus);
+        if (filter.DeliveredAt.HasValue)
+            orders = orders.Where(x => x.DeliveredAt == filter.DeliveredAt);
+        if (filter.TotalAmount.HasValue)
+            orders = orders.Where(x => x.TotalAmount == filter.TotalAmount);
+        if (!string.IsNullOrEmpty(filter.DeliveryAddress))
+            orders = orders.Where(x => x.DeliveryAddress.ToLower().Contains(filter.DeliveryAddress.ToLower()));
+        if (filter.PaymentMethod.HasValue)
+            orders = orders.Where(x => x.PaymentMethod == filter.PaymentMethod);
+        if (filter.PaymentStatus.HasValue)
+            orders = orders.Where(x => x.PaymentStatus == filter.PaymentStatus);
+
+        int totalRecords = orders.Count();
+        var result = orders.Skip((filter.PageNumber - 1) * filter.PageSize)
+                         .Take(filter.PageSize)
+                         .Select(x => mapper.Map<GetOrderDto>(x))
+                         .ToList();
+
+        return PaginationResponse<List<GetOrderDto>>.Create(filter.PageNumber, filter.PageSize, totalRecords, result);
     }
 
     public ApiResponse<GetOrderDto> GetOrderById(int id)

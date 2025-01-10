@@ -2,6 +2,7 @@ using System.Net;
 using AutoMapper;
 using Domain.Dtos;
 using Domain.Entities;
+using Domain.Filters;
 using Infrastructure.Data;
 using Infrastructure.Responses;
 using Microsoft.EntityFrameworkCore;
@@ -32,11 +33,32 @@ public class MenuService(DataContext context, IMapper mapper) : IMenuService
             : new ApiResponse<bool>(true);
     }
 
-    public ApiResponse<List<GetMenuDto>> GetAllMenus()
+    public PaginationResponse<List<GetMenuDto>> GetAllMenus(MenuFilter filter)
     {
-        var Menus = context.Menus.ToList();
-        var getAllMenus = mapper.Map<List<GetMenuDto>>(Menus);
-        return new ApiResponse<List<GetMenuDto>>(getAllMenus);
+        IQueryable<Menu> menus = context.Menus;
+
+        if (filter.RestaurantId.HasValue)
+            menus = menus.Where(x => x.RestaurantId == filter.RestaurantId);
+        if (!string.IsNullOrEmpty(filter.Name))
+            menus = menus.Where(x => x.Name.ToLower().Contains(filter.Name.ToLower()));
+        if (filter.Price.HasValue)
+            menus = menus.Where(x => x.Price == filter.Price);
+        if (!string.IsNullOrEmpty(filter.Category))
+            menus = menus.Where(x => x.Category.ToLower().Contains(filter.Category.ToLower()));
+        if (filter.IsAvailable.HasValue)
+            menus = menus.Where(x => x.IsAvailable == filter.IsAvailable);
+        if (filter.PreparationTime.HasValue)
+            menus = menus.Where(x => x.PreparationTime == filter.PreparationTime);
+        if (filter.Weight.HasValue)
+            menus = menus.Where(x => x.Weight == filter.Weight);
+
+        int totalRecords = menus.Count();
+        var result = menus.Skip((filter.PageNumber - 1) * filter.PageSize)
+                         .Take(filter.PageSize)
+                         .Select(x => mapper.Map<GetMenuDto>(x))
+                         .ToList();
+
+        return PaginationResponse<List<GetMenuDto>>.Create(filter.PageNumber, filter.PageSize, totalRecords, result);
     }
 
     public ApiResponse<GetMenuDto> GetMenuById(int id)

@@ -2,6 +2,7 @@ using System.Net;
 using AutoMapper;
 using Domain.Dtos;
 using Domain.Entities;
+using Domain.Filters;
 using Infrastructure.Data;
 using Infrastructure.Responses;
 using Microsoft.EntityFrameworkCore;
@@ -32,11 +33,34 @@ public class RestaurantService(DataContext context, IMapper mapper) : IRestauran
             : new ApiResponse<bool>(true);
     }
 
-    public ApiResponse<List<GetRestaurantDto>> GetAllRestaurants()
+    public PaginationResponse<List<GetRestaurantDto>> GetAllRestaurants(RestaurantFilter filter)
     {
-        var Restaurants = context.Restaurants.ToList();
-        var getAllRestaurants = mapper.Map<List<GetRestaurantDto>>(Restaurants);
-        return new ApiResponse<List<GetRestaurantDto>>(getAllRestaurants);
+        IQueryable<Restaurant> restaurants = context.Restaurants;
+
+        if (!string.IsNullOrEmpty(filter.Name))
+            restaurants = restaurants.Where(x => x.Name.ToLower().Contains(filter.Name.ToLower()));
+        if (!string.IsNullOrEmpty(filter.Address))
+            restaurants = restaurants.Where(x => x.Address.ToLower().Contains(filter.Address.ToLower()));
+        if (filter.Rating.HasValue)
+            restaurants = restaurants.Where(x => x.Rating == filter.Rating);
+        if (!string.IsNullOrEmpty(filter.WorkingHours))
+            restaurants = restaurants.Where(x => x.WorkingHours.ToLower().Contains(filter.WorkingHours.ToLower()));
+        if (!string.IsNullOrEmpty(filter.ContactPhone))
+            restaurants = restaurants.Where(x => x.ContactPhone.ToLower().Contains(filter.ContactPhone.ToLower()));
+        if (filter.IsActive.HasValue)
+            restaurants = restaurants.Where(x => x.IsActive == filter.IsActive);
+        if (filter.MinOrderAmount.HasValue)
+            restaurants = restaurants.Where(x => x.MinOrderAmount == filter.MinOrderAmount);
+        if (filter.DeliveryPrice.HasValue)
+            restaurants = restaurants.Where(x => x.DeliveryPrice == filter.DeliveryPrice);
+
+        int totalRecords = restaurants.Count();
+        var result = restaurants.Skip((filter.PageNumber - 1) * filter.PageSize)
+                             .Take(filter.PageSize)
+                             .Select(x => mapper.Map<GetRestaurantDto>(x))
+                             .ToList();
+
+        return PaginationResponse<List<GetRestaurantDto>>.Create(filter.PageNumber, filter.PageSize, totalRecords, result);
     }
 
     public ApiResponse<GetRestaurantDto> GetRestaurantById(int id)
